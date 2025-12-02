@@ -5,6 +5,13 @@ terraform {
       version = "4.35.0"
     }
   }
+
+  backend "azurerm" {
+    resource_group_name  = "rg-nt542-s13-sea"
+    storage_account_name = "nt542statestorage"
+    container_name       = "terraformtfstate"
+    key                  = "terraform.tfstate"
+  }
 }
 
 provider "azurerm" {
