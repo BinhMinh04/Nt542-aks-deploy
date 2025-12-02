@@ -36,7 +36,7 @@ jobs:
         run: terraform init -backend-config="resource_group_name=rg-nt542-s13-sea" -backend-config="storage_account_name=nt542statestorage" -backend-config="container_name=terraformtfstate" -backend-config="key=terraform.tfstate"
 
       - name: Terraform Plan
-        run: terraform plan -out=tfplan
+        run: terraform plan -var="subscription_id=${{ secrets.AZURE_SUBSCRIPTION_ID }}" -out=tfplan
 
       - name: Upload Plan
         uses: actions/upload-artifact@v4
