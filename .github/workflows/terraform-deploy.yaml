@@ -47,7 +47,6 @@ jobs:
   apply:
     needs: plan
     runs-on: ubuntu-latest
-    environment: production
     defaults:
       run:
         working-directory: terraform/core
