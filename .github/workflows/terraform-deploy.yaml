@@ -11,7 +11,7 @@ permissions:
   id-token: write
   deployments: write
 jobs:
-  plan:
+  Plan:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -44,8 +44,8 @@ jobs:
           name: tfplan
           path: terraform/core/tfplan
 
-  apply:
-    needs: plan
+  Apply:
+    needs: Plan
     runs-on: ubuntu-latest
     environment: production
     defaults:
