@@ -7,9 +7,9 @@ terraform {
   }
 
   backend "azurerm" {
-    resource_group_name  = "rg-nt542-s13-sea"
+    resource_group_name  = "rg-nt542-g13-sea"
     storage_account_name = "nt542statestorage"
-    container_name       = "terraformtfstate"
+    container_name       = "terraformstate"
     key                  = "terraform.tfstate"
   }
 }
