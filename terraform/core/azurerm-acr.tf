@@ -1,5 +1,5 @@
 resource "azurerm_container_registry" "acr" {
-  name                = "acr-${var.environment}-${var.group}-${var.short_location}"
+  name                = "acr${var.environment}${var.group}${var.short_location}"
   resource_group_name = azurerm_resource_group.main.name
   location            = var.location
   sku                 = "Standard"
