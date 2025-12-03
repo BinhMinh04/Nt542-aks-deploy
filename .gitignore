@@ -1,0 +1,22 @@
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+
+# Sensitive files
+*.tfvars.local
+secrets.tfvars
+*secret*
+*.pem
+*.key
+
+# OS files
+.DS_Store
+Thumbs.db

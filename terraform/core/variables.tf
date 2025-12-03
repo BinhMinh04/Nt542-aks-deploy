@@ -57,4 +57,5 @@ variable "slack_webhook_url" {
   description = "Slack Webhook URL"
   type        = string
   sensitive   = true
+  default     = ""
 }

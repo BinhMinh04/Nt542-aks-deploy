@@ -5,5 +5,3 @@ location        = "southeastasia"
 environment     = "nt542"
 group           = "g13"
 short_location  = "sea"
-
-slack_webhook_url = "https://hooks.slack.com/services/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"

@@ -1,3 +1,36 @@
+# SecretProviderClass to mount Key Vault secrets
+resource "kubernetes_manifest" "slack_secret_provider" {
+  manifest = {
+    apiVersion = "secrets-store.csi.x-k8s.io/v1"
+    kind       = "SecretProviderClass"
+    metadata = {
+      name      = "slack-webhook-secret"
+      namespace = "security"
+    }
+    spec = {
+      provider = "azure"
+      parameters = {
+        usePodIdentity    = "false"
+        keyvaultName      = azurerm_key_vault.aks.name
+        tenantId          = var.tenant_id
+        objects = yamlencode({
+          array = [
+            {
+              objectName = "slack-webhook-url"
+              objectType = "secret"
+            }
+          ]
+        })
+      }
+    }
+  }
+
+  depends_on = [
+    kubernetes_namespace.security,
+    azurerm_key_vault_secret.slack_webhook
+  ]
+}
+
 resource "kubernetes_cron_job_v1" "kube_bench" {
   metadata {
     name      = "kube-bench-scan"
@@ -66,6 +99,14 @@ resource "kubernetes_cron_job_v1" "kube_bench" {
                 # Install tools
                 apk add --no-cache curl jq
                 
+                # Read Slack webhook from mounted secret
+                if [ -f "/mnt/secrets/slack-webhook-url" ]; then
+                  SLACK_WEBHOOK_URL=$(cat /mnt/secrets/slack-webhook-url)
+                else
+                  echo "Slack webhook secret not found, skipping notification"
+                  exit 0
+                fi
+                
                 # Chờ kube-bench chạy xong
                 echo "Waiting for kube-bench to complete..."
                 sleep 90
@@ -108,18 +149,17 @@ resource "kubernetes_cron_job_v1" "kube_bench" {
                 fi
                 
                 # Gửi Slack
-                curl -X POST "${SLACK_WEBHOOK_URL}" \
-                  -H 'Content-type: application/json' \
-                  -d "{\"text\": \"$MESSAGE\"}"
-                
-                echo "Alert sent to Slack!"
+                if [ -n "$SLACK_WEBHOOK_URL" ]; then
+                  curl -X POST "${SLACK_WEBHOOK_URL}" \
+                    -H 'Content-type: application/json' \
+                    -d "{\"text\": \"$MESSAGE\"}"
+                  echo "Alert sent to Slack!"
+                else
+                  echo "Slack webhook URL is empty, skipping notification"
+                fi
                 EOT
               ]
 
-              env {
-                name  = "SLACK_WEBHOOK_URL"
-                value = var.slack_webhook_url
-              }
               env {
                 name  = "CLUSTER_NAME"
                 value = azurerm_kubernetes_cluster.aks.name
@@ -128,6 +168,11 @@ resource "kubernetes_cron_job_v1" "kube_bench" {
               volume_mount {
                 name       = "results"
                 mount_path = "/results"
+              }
+              volume_mount {
+                name       = "secrets"
+                mount_path = "/mnt/secrets"
+                read_only  = true
               }
             }
 
@@ -147,6 +192,16 @@ resource "kubernetes_cron_job_v1" "kube_bench" {
                 path = "/etc/kubernetes"
               }
             }
+            volume {
+              name = "secrets"
+              csi {
+                driver    = "secrets-store.csi.k8s.io"
+                read_only = true
+                volume_attributes = {
+                  secretProviderClass = "slack-webhook-secret"
+                }
+              }
+            }
 
             restart_policy = "Never"
           }
@@ -155,7 +210,10 @@ resource "kubernetes_cron_job_v1" "kube_bench" {
     }
   }
 
-  depends_on = [kubernetes_namespace.security]
+  depends_on = [
+    kubernetes_namespace.security,
+    kubernetes_manifest.slack_secret_provider
+  ]
 }
 
 # Variables

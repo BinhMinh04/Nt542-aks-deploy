@@ -24,3 +24,12 @@ resource "azurerm_role_assignment" "aks_kv_secrets_user" {
   role_definition_name = "Key Vault Secrets User"
   principal_id         = azurerm_kubernetes_cluster.aks.key_vault_secrets_provider[0].secret_identity[0].object_id
 }
+
+# Store Slack Webhook in Key Vault
+resource "azurerm_key_vault_secret" "slack_webhook" {
+  name         = "slack-webhook-url"
+  value        = var.slack_webhook_url
+  key_vault_id = azurerm_key_vault.aks.id
+
+  depends_on = [azurerm_role_assignment.aks_kv_secrets_user]
+}
