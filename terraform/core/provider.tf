@@ -31,12 +31,12 @@ provider "azurerm" {
 }
 
 provider "helm" {
-  kubernetes {
-    host                   = try(azurerm_kubernetes_cluster.aks.kube_config.0.host, "")
-    client_certificate     = try(base64decode(azurerm_kubernetes_cluster.aks.kube_config.0.client_certificate), "")
-    client_key             = try(base64decode(azurerm_kubernetes_cluster.aks.kube_config.0.client_key), "")
-    cluster_ca_certificate = try(base64decode(azurerm_kubernetes_cluster.aks.kube_config.0.cluster_ca_certificate), "")
-  }
+  # kubernetes {
+  #   host                   = try(azurerm_kubernetes_cluster.aks.kube_config.0.host, "")
+  #   client_certificate     = try(base64decode(azurerm_kubernetes_cluster.aks.kube_config.0.client_certificate), "")
+  #   client_key             = try(base64decode(azurerm_kubernetes_cluster.aks.kube_config.0.client_key), "")
+  #   cluster_ca_certificate = try(base64decode(azurerm_kubernetes_cluster.aks.kube_config.0.cluster_ca_certificate), "")
+  # }
 }
 
 provider "kubernetes" {
