@@ -46,3 +46,9 @@ variable "authorized_ip_ranges" {
   type        = list(string)
   default     = ["0.0.0.0/0"]  # Allow all IPs - restrict this in production
 }
+
+variable "admin_group_object_ids" {
+  description = "List of Azure AD group object IDs for AKS cluster administrators"
+  type        = list(string)
+  default     = []
+}
