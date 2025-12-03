@@ -8,6 +8,8 @@ resource "kubernetes_namespace" "security" {
       "pod-security.kubernetes.io/warn"    = "restricted"
     }
   }
+
+  depends_on = [azurerm_kubernetes_cluster.aks]
 }
 
 # SecretProviderClass to mount Key Vault secrets
@@ -39,7 +41,8 @@ resource "kubernetes_manifest" "slack_secret_provider" {
 
   depends_on = [
     kubernetes_namespace.security,
-    azurerm_key_vault_secret.slack_webhook
+    azurerm_key_vault_secret.slack_webhook,
+    azurerm_kubernetes_cluster.aks
   ]
 }
 
@@ -224,7 +227,8 @@ resource "kubernetes_cron_job_v1" "kube_bench" {
 
   depends_on = [
     kubernetes_namespace.security,
-    kubernetes_manifest.slack_secret_provider
+    kubernetes_manifest.slack_secret_provider,
+    azurerm_kubernetes_cluster.aks
   ]
 }
 
