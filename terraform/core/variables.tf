@@ -40,3 +40,9 @@ variable "vm_size" {
   type        = string
   default     = "Standard_DS2_v2"
 }
+
+variable "authorized_ip_ranges" {
+  description = "List of authorized IP ranges for API server access"
+  type        = list(string)
+  default     = ["0.0.0.0/0"]  # Allow all IPs - restrict this in production
+}
