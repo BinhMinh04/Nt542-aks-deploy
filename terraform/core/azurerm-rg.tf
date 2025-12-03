@@ -1,5 +1,5 @@
 resource "azurerm_resource_group" "main" {
-  name     = "rg-nt542-g13-sea"
+  name     = "rg-${var.environment}-${var.group}-${var.short_location}"
   location = var.location
 
   tags = {
