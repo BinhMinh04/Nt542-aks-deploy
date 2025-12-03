@@ -145,7 +145,7 @@ resource "kubernetes_cron_job_v1" "kube_bench" {
                 
                 # Tạo message
                 MESSAGE="*🔍 CIS AKS Benchmark Report*\n"
-                MESSAGE="$MESSAGE*Cluster:* ${CLUSTER_NAME}\n"
+                MESSAGE="$MESSAGE*Cluster:* $${CLUSTER_NAME}\n"
                 MESSAGE="$MESSAGE*Time:* $(date -u '+%Y-%m-%d %H:%M:%S UTC')\n\n"
                 MESSAGE="$MESSAGE*📊 Summary:*\n"
                 MESSAGE="$MESSAGE✅ Pass: $TOTAL_PASS\n"
@@ -162,7 +162,7 @@ resource "kubernetes_cron_job_v1" "kube_bench" {
                 
                 # Gửi Slack
                 if [ -n "$SLACK_WEBHOOK_URL" ]; then
-                  curl -X POST "${SLACK_WEBHOOK_URL}" \
+                  curl -X POST "$${SLACK_WEBHOOK_URL}" \
                     -H 'Content-type: application/json' \
                     -d "{\"text\": \"$MESSAGE\"}"
                   echo "Alert sent to Slack!"
