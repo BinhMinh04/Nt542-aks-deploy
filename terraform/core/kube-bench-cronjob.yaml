@@ -1,0 +1,138 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: kube-bench-scan
+  namespace: security
+spec:
+  schedule: "0 */2 * * *"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    metadata:
+      labels:
+        app: kube-bench
+    spec:
+      template:
+        metadata:
+          labels:
+            app: kube-bench
+        spec:
+          hostPID: true
+          containers:
+          - name: kube-bench
+            image: aquasec/kube-bench:v0.8.0
+            command: [ "kube-bench" ]
+            args: [ "run", "--targets", "node,policies,master", "--outputfile", "/results/output.txt", "--json", "--outputfile", "/results/output.json" ]
+            volumeMounts:
+            - name: results
+              mountPath: /results
+            - name: etc-systemd
+              mountPath: /etc/systemd
+              readOnly: true
+            - name: lib-systemd
+              mountPath: /lib/systemd/
+              readOnly: true
+            - name: srv-kubernetes
+              mountPath: /srv/kubernetes/
+              readOnly: true
+            - name: etc-kubernetes
+              mountPath: /etc/kubernetes
+              readOnly: true
+          - name: slack-alert
+            image: alpine:3.18
+            command: [ "/bin/sh", "-c" ]
+            args:
+            - |
+              # Install tools
+              apk add --no-cache curl jq
+
+              # Read Slack webhook from mounted secret
+              if [ -f "/mnt/secrets/slack-webhook-url" ]; then
+                SLACK_WEBHOOK_URL=$(cat /mnt/secrets/slack-webhook-url)
+              else
+                echo "Slack webhook secret not found, skipping notification"
+                exit 0
+              fi
+
+              # Wait for kube-bench to complete
+              echo "Waiting for kube-bench to complete..."
+              sleep 90
+
+              # Read results
+              OUTPUT_FILE="/results/output.txt"
+              JSON_FILE="/results/output.json"
+
+              if [ ! -f "$OUTPUT_FILE" ]; then
+                echo "Output file not found!"
+                exit 1
+              fi
+
+              # Parse summary
+              TOTAL_PASS=$(grep -oP '\d+(?= checks PASS)' $OUTPUT_FILE || echo "0")
+              TOTAL_FAIL=$(grep -oP '\d+(?= checks FAIL)' $OUTPUT_FILE || echo "0")
+              TOTAL_WARN=$(grep -oP '\d+(?= checks WARN)' $OUTPUT_FILE || echo "0")
+
+              # Get FAIL list
+              FAIL_LIST=$(grep "\[FAIL\]" $OUTPUT_FILE | head -20 || echo "None")
+
+              # Get WARN list
+              WARN_LIST=$(grep "\[WARN\]" $OUTPUT_FILE | head -10 || echo "None")
+
+              # Create message
+              MESSAGE="*🔍 CIS AKS Benchmark Report*\n"
+              MESSAGE="$MESSAGE*Cluster:* $${CLUSTER_NAME}\n"
+              MESSAGE="$MESSAGE*Time:* $(date -u '+%Y-%m-%d %H:%M:%S UTC')\n\n"
+              MESSAGE="$MESSAGE*📊 Summary:*\n"
+              MESSAGE="$MESSAGE✅ Pass: $TOTAL_PASS\n"
+              MESSAGE="$MESSAGE❌ Fail: $TOTAL_FAIL\n"
+              MESSAGE="$MESSAGE⚠️ Warn: $TOTAL_WARN\n\n"
+
+              if [ "$TOTAL_FAIL" -gt 0 ]; then
+                MESSAGE="$MESSAGE*❌ Failed Controls:*\n\`\`\`\n$FAIL_LIST\n\`\`\`\n\n"
+              fi
+
+              if [ "$TOTAL_WARN" -gt 0 ]; then
+                MESSAGE="$MESSAGE*⚠️ Warning Controls:*\n\`\`\`\n$WARN_LIST\n\`\`\`"
+              fi
+
+              # Send to Slack
+              if [ -n "$SLACK_WEBHOOK_URL" ]; then
+                curl -X POST "$${SLACK_WEBHOOK_URL}" \
+                  -H 'Content-type: application/json' \
+                  -d "{\"text\": \"$MESSAGE\"}"
+                echo "Alert sent to Slack!"
+              else
+                echo "Slack webhook URL is empty, skipping notification"
+              fi
+            env:
+            - name: CLUSTER_NAME
+              value: "CLUSTER_NAME_PLACEHOLDER"
+            volumeMounts:
+            - name: results
+              mountPath: /results
+            - name: secrets
+              mountPath: /mnt/secrets
+              readOnly: true
+          volumes:
+          - name: results
+            emptyDir: {}
+          - name: secrets
+            csi:
+              driver: secrets-store.csi.x-k8s.io
+              readOnly: true
+              volumeAttributes:
+                secretProviderClass: slack-webhook-secret
+          - name: etc-systemd
+            hostPath:
+              path: /etc/systemd
+          - name: lib-systemd
+            hostPath:
+              path: /lib/systemd
+          - name: srv-kubernetes
+            hostPath:
+              path: /srv/kubernetes/
+          - name: etc-kubernetes
+            hostPath:
+              path: /etc/kubernetes
+          restartPolicy: OnFailure
+          serviceAccountName: kube-bench
