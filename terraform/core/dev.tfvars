@@ -5,3 +5,5 @@ location        = "southeastasia"
 environment     = "nt542"
 group           = "g13"
 short_location  = "sea"
+
+admin_group_object_ids = [ "d11a5cf3-4b5b-4992-ae5a-0672c52b25a2" ]

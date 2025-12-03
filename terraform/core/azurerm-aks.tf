@@ -15,6 +15,8 @@ resource "azurerm_kubernetes_cluster" "aks" {
   # CIS 5.5.2: Azure RBAC
   azure_active_directory_role_based_access_control {
     azure_rbac_enabled = true
+    tenant_id = var.tenant_id
+    admin_group_object_ids = var.admin_group_object_ids
   }
 
   # CIS 5.4.4: Network Policy
