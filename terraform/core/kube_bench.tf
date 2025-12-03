@@ -1,3 +1,15 @@
+# Create security namespace
+resource "kubernetes_namespace" "security" {
+  metadata {
+    name = "security"
+    labels = {
+      "pod-security.kubernetes.io/enforce" = "restricted"
+      "pod-security.kubernetes.io/audit"   = "restricted"
+      "pod-security.kubernetes.io/warn"    = "restricted"
+    }
+  }
+}
+
 # SecretProviderClass to mount Key Vault secrets
 resource "kubernetes_manifest" "slack_secret_provider" {
   manifest = {

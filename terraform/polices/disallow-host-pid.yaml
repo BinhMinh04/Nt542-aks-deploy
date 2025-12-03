@@ -1,0 +1,23 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-host-pid
+  annotations:
+    policies.kyverno.io/title: Disallow Host PID
+    policies.kyverno.io/category: Pod Security
+    cis-benchmark: "4.2.2"
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+  - name: host-pid
+    match:
+      any:
+      - resources:
+          kinds:
+          - Pod
+    validate:
+      message: "Sharing the host PID namespace is not allowed (CIS 4.2.2)"
+      pattern:
+        spec:
+          =(hostPID): "false"
