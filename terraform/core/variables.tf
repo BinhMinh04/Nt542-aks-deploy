@@ -32,7 +32,7 @@ variable "short_location" {
 variable "node_count" {
   description = "Number of nodes in the AKS cluster"
   type        = number
-  default     = 1
+  default     = 3
 }
 
 variable "vm_size" {
@@ -44,11 +44,22 @@ variable "vm_size" {
 variable "authorized_ip_ranges" {
   description = "List of authorized IP ranges for API server access"
   type        = list(string)
-  default     = ["0.0.0.0/0"]  # Allow all IPs - restrict this in production
+  default     = ["10.0.0.0/8"]  # Allow all IPs - restrict this in production
 }
 
 variable "admin_group_object_ids" {
   description = "List of Azure AD group object IDs for AKS cluster administrators"
   type        = list(string)
   default     = []
+}
+
+variable "slack_webhook_url" {
+  description = "Slack Webhook URL"
+  type        = string
+  sensitive   = true
+}
+
+variable "cluster_name" {
+  description = "AKS Cluster name"
+  type        = string
 }
