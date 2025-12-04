@@ -5,7 +5,7 @@ resource "azurerm_kubernetes_cluster" "aks" {
   dns_prefix          = "aks-${var.environment}-${var.group}-${var.short_location}-dns"
 
   # CIS 5.4.2: Private Cluster - Enable Private Endpoint and Disable Public Access
-  private_cluster_enabled             = true
+  private_cluster_enabled             = false
   private_cluster_public_fqdn_enabled = false
 
   # CIS 5.4.1: Restrict Access to the Control Plane Endpoint
