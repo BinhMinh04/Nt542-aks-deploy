@@ -10,6 +10,7 @@ permissions:
   contents: read
   id-token: write
   deployments: write
+
 jobs:
   Plan:
     runs-on: ubuntu-latest
@@ -21,22 +22,30 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Azure Login (Service Principal)
+      - name: Azure Login
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
       - name: Terraform Init
-        run: terraform init -backend-config="resource_group_name=rg-nt542-g13-sea" -backend-config="storage_account_name=nt542statestorage" -backend-config="container_name=terraformstate" -backend-config="key=terraform.tfstate"
+        run: |
+          terraform init \
+            -backend-config="resource_group_name=rg-nt542-g13-sea" \
+            -backend-config="storage_account_name=nt542statestorage" \
+            -backend-config="container_name=terraformstate" \
+            -backend-config="key=terraform.tfstate"
 
       - name: Terraform Plan
-        run: terraform plan -var-file="dev.tfvars" -var="slack_webhook_url=${{ secrets.SLACK_WEBHOOK_URL }}" -out=tfplan
+        run: |
+          terraform plan \
+            -var-file="dev.tfvars" \
+            -var="slack_webhook_url=${{ secrets.SLACK_WEBHOOK_URL }}" \
+            -out=tfplan
 
       - name: Upload Plan
         uses: actions/upload-artifact@v4
@@ -56,19 +65,23 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Azure Login (Service Principal)
+      - name: Azure Login
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
       - name: Terraform Init
-        run: terraform init -backend-config="resource_group_name=rg-nt542-g13-sea" -backend-config="storage_account_name=nt542statestorage" -backend-config="container_name=terraformstate" -backend-config="key=terraform.tfstate"
+        run: |
+          terraform init \
+            -backend-config="resource_group_name=rg-nt542-g13-sea" \
+            -backend-config="storage_account_name=nt542statestorage" \
+            -backend-config="container_name=terraformstate" \
+            -backend-config="key=terraform.tfstate"
 
       - name: Download Plan
         uses: actions/download-artifact@v4
@@ -78,3 +91,49 @@ jobs:
 
       - name: Terraform Apply
         run: terraform apply -auto-approve tfplan
+
+  Configure-AKS:
+    needs: Apply
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Install Kyverno
+        run: |
+          az aks command invoke \
+            --resource-group rg-nt542-g13-sea \
+            --name aks-nt542-g13-sea \
+            --command "helm repo add kyverno https://kyverno.github.io/kyverno/ && helm repo update && helm upgrade --install kyverno kyverno/kyverno --namespace kyverno --create-namespace --wait"
+
+      - name: Apply Kyverno Policies
+        run: |
+          az aks command invoke \
+            --resource-group rg-nt542-g13-sea \
+            --name aks-nt542-g13-sea \
+            --command "kubectl apply -f ." \
+            --file terraform/policies/
+
+      - name: Create Security Namespace
+        run: |
+          az aks command invoke \
+            --resource-group rg-nt542-g13-sea \
+            --name aks-nt542-g13-sea \
+            --command "kubectl create namespace security --dry-run=client -o yaml | kubectl apply -f - && kubectl label namespace security pod-security.kubernetes.io/enforce=privileged pod-security.kubernetes.io/audit=privileged pod-security.kubernetes.io/warn=privileged --overwrite"
+
+      - name: Apply Kube-bench CronJob
+        run: |
+          az aks command invoke \
+            --resource-group rg-nt542-g13-sea \
+            --name aks-nt542-g13-sea \
+            --command "kubectl apply -f ." \
+            --file terraform/manifests/
