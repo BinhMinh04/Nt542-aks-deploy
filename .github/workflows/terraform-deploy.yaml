@@ -108,32 +108,23 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Install Kyverno
+      - name: Get AKS Credentials
+        run: az aks get-credentials --resource-group rg-nt542-g13-sea --name aks-nt542-g13-sea --overwrite-existing
+
+      - name: Install Kyverno (Helm)
         run: |
-          az aks command invoke \
-            --resource-group rg-nt542-g13-sea \
-            --name aks-nt542-g13-sea \
-            --command "helm repo add kyverno https://kyverno.github.io/kyverno/ && helm repo update && helm upgrade --install kyverno kyverno/kyverno --namespace kyverno --create-namespace --wait"
+          helm repo add kyverno https://kyverno.github.io/kyverno/
+          helm repo update
+          helm upgrade --install kyverno kyverno/kyverno --namespace kyverno --create-namespace --wait
 
       - name: Apply Kyverno Policies
-        run: |
-          az aks command invoke \
-            --resource-group rg-nt542-g13-sea \
-            --name aks-nt542-g13-sea \
-            --command "kubectl apply -f ." \
-            --file terraform/policies/
+        # Kubectl chạy trực tiếp trên runner sẽ hiểu được apply cả thư mục
+        run: kubectl apply -f terraform/policies/
 
       - name: Create Security Namespace
         run: |
-          az aks command invoke \
-            --resource-group rg-nt542-g13-sea \
-            --name aks-nt542-g13-sea \
-            --command "kubectl create namespace security --dry-run=client -o yaml | kubectl apply -f - && kubectl label namespace security pod-security.kubernetes.io/enforce=privileged pod-security.kubernetes.io/audit=privileged pod-security.kubernetes.io/warn=privileged --overwrite"
+          kubectl create namespace security --dry-run=client -o yaml | kubectl apply -f -
+          kubectl label namespace security pod-security.kubernetes.io/enforce=privileged pod-security.kubernetes.io/audit=privileged pod-security.kubernetes.io/warn=privileged --overwrite
 
       - name: Apply Kube-bench CronJob
-        run: |
-          az aks command invoke \
-            --resource-group rg-nt542-g13-sea \
-            --name aks-nt542-g13-sea \
-            --command "kubectl apply -f ." \
-            --file terraform/manifests/
+        run: kubectl apply -f terraform/manifests/
