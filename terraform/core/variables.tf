@@ -38,7 +38,7 @@ variable "node_count" {
 variable "vm_size" {
   description = "VM size for AKS nodes"
   type        = string
-  default     = "	Standard_B2s_v2"
+  default     = "Standard_B2s_v2"
 }
 
 variable "authorized_ip_ranges" {
