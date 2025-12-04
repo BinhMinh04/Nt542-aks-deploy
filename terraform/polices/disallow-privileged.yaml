@@ -5,6 +5,7 @@ metadata:
   annotations:
     policies.kyverno.io/title: Disallow Privileged Containers
     policies.kyverno.io/category: Pod Security
+    policies.kyverno.io/severity: high
     cis-benchmark: "4.2.1"
 spec:
   validationFailureAction: Enforce
@@ -21,5 +22,11 @@ spec:
       pattern:
         spec:
           containers:
-          - securityContext:
-              privileged: "false"
+          - =(securityContext):
+              =(privileged): false
+          =(initContainers):
+          - =(securityContext):
+              =(privileged): false
+          =(ephemeralContainers):
+          - =(securityContext):
+              =(privileged): false

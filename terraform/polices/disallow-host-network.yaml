@@ -1,0 +1,30 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-host-network
+  annotations:
+    policies.kyverno.io/title: Disallow Host Network
+    policies.kyverno.io/category: Pod Security
+    policies.kyverno.io/severity: high
+    cis-benchmark: "4.2.4"
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+  - name: host-network
+    match:
+      any:
+      - resources:
+          kinds:
+          - Pod
+    exclude:
+      any:
+      - resources:
+          namespaces:
+          - kube-system
+          - calico-system
+    validate:
+      message: "Sharing the host network namespace is not allowed (CIS 4.2.4)"
+      pattern:
+        spec:
+          =(hostNetwork): false

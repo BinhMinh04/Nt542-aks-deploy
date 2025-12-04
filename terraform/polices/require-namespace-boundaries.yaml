@@ -1,0 +1,72 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-namespace-labels
+  annotations:
+    policies.kyverno.io/title: Require Namespace Labels
+    policies.kyverno.io/category: Best Practices
+    policies.kyverno.io/severity: medium
+    cis-benchmark: "4.6.1"
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+  - name: require-namespace-labels
+    match:
+      any:
+      - resources:
+          kinds:
+          - Namespace
+    exclude:
+      any:
+      - resources:
+          names:
+          - kube-system
+          - kube-public
+          - kube-node-lease
+          - default
+          - kyverno
+          - calico-system
+    validate:
+      message: "Namespace must have labels (CIS 4.6.1)"
+      pattern:
+        metadata:
+          labels:
+            environment: "?*"
+
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-resource-limits
+  annotations:
+    policies.kyverno.io/title: Require Resource Limits
+    policies.kyverno.io/category: Best Practices
+    policies.kyverno.io/severity: medium
+    cis-benchmark: "4.6.1"
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+  - name: require-limits
+    match:
+      any:
+      - resources:
+          kinds:
+          - Pod
+    exclude:
+      any:
+      - resources:
+          namespaces:
+          - kube-system
+          - kyverno
+          - calico-system
+    validate:
+      message: "Containers must have resource limits (CIS 4.6.1)"
+      pattern:
+        spec:
+          containers:
+          - resources:
+              limits:
+                memory: "?*"
+                cpu: "?*"

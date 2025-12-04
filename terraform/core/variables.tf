@@ -1,5 +1,5 @@
 variable "location" {
-  description = "The Azure region where resources will be deployed"
+  description = "Azure region"
   type        = string
   default     = "southeastasia"
 }
@@ -15,40 +15,40 @@ variable "tenant_id" {
 }
 
 variable "environment" {
-  description = "The environment for the deployment (e.g., dev, prod)"
+  description = "Environment (e.g., dev, prod)"
   type        = string
 }
 
 variable "group" {
-  description = "The group or project name"
+  description = "Group or project name"
   type        = string
 }
 
 variable "short_location" {
-  description = "A short identifier for the location"
+  description = "Short location identifier"
   type        = string
 }
 
 variable "node_count" {
-  description = "Number of nodes in the AKS cluster"
+  description = "Number of AKS nodes"
   type        = number
   default     = 3
 }
 
 variable "vm_size" {
-  description = "The size of the VM for the AKS nodes"
+  description = "VM size for AKS nodes"
   type        = string
   default     = "Standard_DS2_v2"
 }
 
 variable "authorized_ip_ranges" {
-  description = "List of authorized IP ranges for API server access"
+  description = "Authorized IP ranges for API server (CIS 5.4.1)"
   type        = list(string)
-  default     = ["10.0.0.0/8"]  # Allow all IPs - restrict this in production
+  default     = []
 }
 
 variable "admin_group_object_ids" {
-  description = "List of Azure AD group object IDs for AKS cluster administrators"
+  description = "Azure AD group IDs for AKS admins"
   type        = list(string)
   default     = []
 }
@@ -58,4 +58,10 @@ variable "slack_webhook_url" {
   type        = string
   sensitive   = true
   default     = ""
+}
+
+variable "log_retention_days" {
+  description = "Log retention days"
+  type        = number
+  default     = 90
 }

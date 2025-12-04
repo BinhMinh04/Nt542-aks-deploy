@@ -1,0 +1,41 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: restrict-pod-create-access
+  annotations:
+    policies.kyverno.io/title: Restrict Pod Creation Access
+    policies.kyverno.io/category: RBAC Security
+    policies.kyverno.io/severity: medium
+    cis-benchmark: "4.1.4"
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+  - name: restrict-pod-create
+    match:
+      any:
+      - resources:
+          kinds:
+          - ClusterRole
+          - Role
+    exclude:
+      any:
+      - resources:
+          names:
+          - cluster-admin
+          - admin
+          - edit
+          - system:*
+    validate:
+      message: "Pod creation access should be minimized (CIS 4.1.4)"
+      foreach:
+      - list: "request.object.rules[]"
+        deny:
+          conditions:
+            all:
+            - key: "{{ element.resources[] }}"
+              operator: AnyIn
+              value: ["pods", "*"]
+            - key: "{{ element.verbs[] }}"
+              operator: AnyIn
+              value: ["create", "*"]

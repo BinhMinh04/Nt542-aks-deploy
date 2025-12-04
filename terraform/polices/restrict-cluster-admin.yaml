@@ -1,0 +1,48 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: restrict-cluster-admin-binding
+  annotations:
+    policies.kyverno.io/title: Restrict Cluster Admin Role Binding
+    policies.kyverno.io/category: RBAC Security
+    policies.kyverno.io/severity: high
+    cis-benchmark: "4.1.1"
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+  - name: restrict-cluster-admin-clusterrolebinding
+    match:
+      any:
+      - resources:
+          kinds:
+          - ClusterRoleBinding
+    validate:
+      message: "Binding to cluster-admin should be minimized (CIS 4.1.1)"
+      deny:
+        conditions:
+          all:
+          - key: "{{ request.object.roleRef.name }}"
+            operator: Equals
+            value: "cluster-admin"
+          - key: "{{ request.object.roleRef.kind }}"
+            operator: Equals
+            value: "ClusterRole"
+
+  - name: restrict-cluster-admin-rolebinding
+    match:
+      any:
+      - resources:
+          kinds:
+          - RoleBinding
+    validate:
+      message: "Binding to cluster-admin should be minimized (CIS 4.1.1)"
+      deny:
+        conditions:
+          all:
+          - key: "{{ request.object.roleRef.name }}"
+            operator: Equals
+            value: "cluster-admin"
+          - key: "{{ request.object.roleRef.kind }}"
+            operator: Equals
+            value: "ClusterRole"

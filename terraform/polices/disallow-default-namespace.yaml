@@ -3,9 +3,13 @@ kind: ClusterPolicy
 metadata:
   name: disallow-default-namespace
   annotations:
+    policies.kyverno.io/title: Disallow Default Namespace
+    policies.kyverno.io/category: Multi-Tenancy
+    policies.kyverno.io/severity: medium
     cis-benchmark: "4.6.3"
 spec:
   validationFailureAction: Enforce
+  background: true
   rules:
   - name: validate-namespace
     match:
@@ -13,6 +17,15 @@ spec:
       - resources:
           kinds:
           - Pod
+          - Deployment
+          - StatefulSet
+          - DaemonSet
+          - ReplicaSet
+          - Job
+          - CronJob
+          - Service
+          - ConfigMap
+          - Secret
     validate:
       message: "Using 'default' namespace is not allowed (CIS 4.6.3)"
       pattern:
