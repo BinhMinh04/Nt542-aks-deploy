@@ -4,7 +4,7 @@ metadata:
   name: kube-bench-scan
   namespace: security
 spec:
-  schedule: "0 */2 * * *"
+  schedule: "0 */1 * * *"
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 1
   jobTemplate:
