@@ -27,6 +27,8 @@ spec:
           - default
           - kyverno
           - calico-system
+          - aks-command
+          - security
     validate:
       message: "Namespace must have labels (CIS 4.6.1)"
       pattern:
@@ -61,6 +63,8 @@ spec:
           - kube-system
           - kyverno
           - calico-system
+          - aks-command
+          - security
     validate:
       message: "Containers must have resource limits (CIS 4.6.1)"
       pattern:

@@ -27,6 +27,7 @@ spec:
           - kyverno
           - calico-system
           - security
+          - aks-command
     validate:
       message: "SA tokens should not be auto-mounted (CIS 4.1.6)"
       pattern:

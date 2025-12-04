@@ -25,6 +25,8 @@ spec:
           - kube-public
           - kyverno
           - calico-system
+          - aks-command
+          - security
     validate:
       message: "Pod must have securityContext (CIS 4.6.2)"
       pattern:
@@ -48,6 +50,8 @@ spec:
           - kube-public
           - kyverno
           - calico-system
+          - aks-command
+          - security
     validate:
       message: "Containers must have securityContext (CIS 4.6.2)"
       pattern:

@@ -23,6 +23,9 @@ spec:
           namespaces:
           - kube-system
           - calico-system
+          - aks-command
+          - kyverno
+          - security
     validate:
       message: "Sharing the host network namespace is not allowed (CIS 4.2.4)"
       pattern:

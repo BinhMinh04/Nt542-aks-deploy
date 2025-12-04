@@ -17,6 +17,14 @@ spec:
       - resources:
           kinds:
           - ClusterRoleBinding
+    exclude:
+      any:
+      - resources:
+          namespaces:
+          - kube-system
+          - aks-command
+          - kyverno
+          - security
     validate:
       message: "Binding to cluster-admin should be minimized (CIS 4.1.1)"
       deny:
@@ -35,6 +43,14 @@ spec:
       - resources:
           kinds:
           - RoleBinding
+    exclude:
+      any:
+      - resources:
+          namespaces:
+          - kube-system
+          - aks-command
+          - kyverno
+          - security
     validate:
       message: "Binding to cluster-admin should be minimized (CIS 4.1.1)"
       deny:

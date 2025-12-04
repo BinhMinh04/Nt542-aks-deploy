@@ -73,6 +73,8 @@ spec:
           - kyverno
           - calico-system
           - default
+          - aks-command
+          - security
     generate:
       apiVersion: networking.k8s.io/v1
       kind: NetworkPolicy
@@ -101,6 +103,8 @@ spec:
           - kyverno
           - calico-system
           - default
+          - aks-command
+          - security
     generate:
       apiVersion: networking.k8s.io/v1
       kind: NetworkPolicy

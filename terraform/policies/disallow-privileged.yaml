@@ -17,6 +17,14 @@ spec:
       - resources:
           kinds:
           - Pod
+    exclude:
+      any:
+      - resources:
+          namespaces:
+          - kube-system
+          - aks-command
+          - kyverno
+          - security
     validate:
       message: "Privileged containers are not allowed (CIS 4.2.1)"
       pattern:

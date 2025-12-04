@@ -26,6 +26,14 @@ spec:
           - Service
           - ConfigMap
           - Secret
+    exclude:
+      any:
+      - resources:
+          namespaces:
+          - kube-system
+          - aks-command
+          - kyverno
+          - security
     validate:
       message: "Using 'default' namespace is not allowed (CIS 4.6.3)"
       pattern:

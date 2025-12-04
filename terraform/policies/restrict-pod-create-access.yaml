@@ -26,6 +26,12 @@ spec:
           - admin
           - edit
           - system:*
+      - resources:
+          namespaces:
+          - kube-system
+          - aks-command
+          - kyverno
+          - security
     validate:
       message: "Pod creation access should be minimized (CIS 4.1.4)"
       foreach:

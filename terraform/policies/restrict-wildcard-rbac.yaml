@@ -27,6 +27,12 @@ spec:
           - edit
           - view
           - system:*
+      - resources:
+          namespaces:
+          - kube-system
+          - aks-command
+          - kyverno
+          - security
     validate:
       message: "Wildcard in resources not allowed (CIS 4.1.3)"
       foreach:
@@ -53,6 +59,12 @@ spec:
           - admin
           - edit
           - system:*
+      - resources:
+          namespaces:
+          - kube-system
+          - aks-command
+          - kyverno
+          - security
     validate:
       message: "Wildcard in verbs not allowed (CIS 4.1.3)"
       foreach:

@@ -22,6 +22,9 @@ spec:
       - resources:
           namespaces:
           - kube-system
+          - aks-command
+          - kyverno
+          - security
     validate:
       message: "Privilege escalation is not allowed (CIS 4.2.5)"
       pattern:
