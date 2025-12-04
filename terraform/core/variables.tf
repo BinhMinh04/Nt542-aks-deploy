@@ -44,13 +44,13 @@ variable "vm_size" {
 variable "authorized_ip_ranges" {
   description = "Authorized IP ranges for API server (CIS 5.4.1)"
   type        = list(string)
-  default     = []
+  default     = ["0.0.0.0/0"]
 }
 
 variable "admin_group_object_ids" {
   description = "Azure AD group IDs for AKS admins"
   type        = list(string)
-  default     = ["0.0.0.0/0"]
+  default     = []
 }
 
 variable "slack_webhook_url" {
