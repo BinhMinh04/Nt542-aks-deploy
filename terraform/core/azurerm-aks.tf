@@ -21,7 +21,6 @@ resource "azurerm_kubernetes_cluster" "aks" {
   }
 
   # CIS 5.4.4: Network Policy is Enabled
-  # CIS 5.4.3: Private Nodes
   network_profile {
     network_plugin    = "azure"
     network_policy    = "calico"
@@ -40,6 +39,7 @@ resource "azurerm_kubernetes_cluster" "aks" {
     log_analytics_workspace_id = azurerm_log_analytics_workspace.law.id
   }
 
+  # CIS 5.4.3: Private Nodes
   default_node_pool {
     name                 = "default"
     node_count           = var.node_count
