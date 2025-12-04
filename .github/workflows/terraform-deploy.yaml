@@ -108,23 +108,36 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Get AKS Credentials
-        run: az aks get-credentials --resource-group rg-nt542-g13-sea --name aks-nt542-g13-sea --overwrite-existing
-
-      - name: Install Kyverno (Helm)
+      - name: Install Kyverno
         run: |
-          helm repo add kyverno https://kyverno.github.io/kyverno/
-          helm repo update
-          helm upgrade --install kyverno kyverno/kyverno --namespace kyverno --create-namespace --wait
+          az aks command invoke \
+            --resource-group rg-nt542-g13-sea \
+            --name aks-nt542-g13-sea \
+            --command "helm repo add kyverno https://kyverno.github.io/kyverno/ && helm repo update && helm upgrade --install kyverno kyverno/kyverno --namespace kyverno --create-namespace --wait"
 
       - name: Apply Kyverno Policies
-        # Kubectl chạy trực tiếp trên runner sẽ hiểu được apply cả thư mục
-        run: kubectl apply -f terraform/policies/
+        run: |
+          awk 'FNR==1 && NR!=1 {print "---"}{print}' terraform/policies/*.yaml > combined-policies.yaml
+          
+          az aks command invoke \
+            --resource-group rg-nt542-g13-sea \
+            --name aks-nt542-g13-sea \
+            --command "kubectl apply -f combined-policies.yaml" \
+            --file combined-policies.yaml
 
       - name: Create Security Namespace
         run: |
-          kubectl create namespace security --dry-run=client -o yaml | kubectl apply -f -
-          kubectl label namespace security pod-security.kubernetes.io/enforce=privileged pod-security.kubernetes.io/audit=privileged pod-security.kubernetes.io/warn=privileged --overwrite
+          az aks command invoke \
+            --resource-group rg-nt542-g13-sea \
+            --name aks-nt542-g13-sea \
+            --command "kubectl create namespace security --dry-run=client -o yaml | kubectl apply -f - && kubectl label namespace security pod-security.kubernetes.io/enforce=privileged pod-security.kubernetes.io/audit=privileged pod-security.kubernetes.io/warn=privileged --overwrite"
 
       - name: Apply Kube-bench CronJob
-        run: kubectl apply -f terraform/manifests/
+        run: |
+          awk 'FNR==1 && NR!=1 {print "---"}{print}' terraform/manifests/*.yaml > combined-manifests.yaml
+
+          az aks command invoke \
+            --resource-group rg-nt542-g13-sea \
+            --name aks-nt542-g13-sea \
+            --command "kubectl apply -f combined-manifests.yaml" \
+            --file combined-manifests.yaml
