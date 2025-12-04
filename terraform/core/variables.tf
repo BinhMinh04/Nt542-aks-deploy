@@ -50,7 +50,7 @@ variable "authorized_ip_ranges" {
 variable "admin_group_object_ids" {
   description = "Azure AD group IDs for AKS admins"
   type        = list(string)
-  default     = []
+  default     = ["0.0.0.0/0"]
 }
 
 variable "slack_webhook_url" {
