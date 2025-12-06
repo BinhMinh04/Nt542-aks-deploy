@@ -29,15 +29,15 @@ resource "azurerm_kubernetes_cluster" "aks" {
   }
 
   # CIS 2.1.1: Enable Audit Logs via Azure Monitor
-  oms_agent {
-    log_analytics_workspace_id      = azurerm_log_analytics_workspace.law.id
-    msi_auth_for_monitoring_enabled = true
-  }
+  # oms_agent {
+  #   log_analytics_workspace_id      = azurerm_log_analytics_workspace.law.id
+  #   msi_auth_for_monitoring_enabled = true
+  # }
 
-  # Microsoft Defender for Containers
-  microsoft_defender {
-    log_analytics_workspace_id = azurerm_log_analytics_workspace.law.id
-  }
+  # # Microsoft Defender for Containers
+  # microsoft_defender {
+  #   log_analytics_workspace_id = azurerm_log_analytics_workspace.law.id
+  # }
 
   # CIS 5.4.3: Private Nodes
   default_node_pool {
