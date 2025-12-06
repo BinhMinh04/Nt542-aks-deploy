@@ -39,21 +39,21 @@ resource "azurerm_role_assignment" "aks_acr_pull" {
 }
 
 # Diagnostic settings for ACR
-resource "azurerm_monitor_diagnostic_setting" "acr" {
-  name                       = "diag-${azurerm_container_registry.acr.name}"
-  target_resource_id         = azurerm_container_registry.acr.id
-  log_analytics_workspace_id = azurerm_log_analytics_workspace.law.id
+# resource "azurerm_monitor_diagnostic_setting" "acr" {
+#   name                       = "diag-${azurerm_container_registry.acr.name}"
+#   target_resource_id         = azurerm_container_registry.acr.id
+#   log_analytics_workspace_id = azurerm_log_analytics_workspace.law.id
 
-  enabled_log {
-    category = "ContainerRegistryRepositoryEvents"
-  }
+#   enabled_log {
+#     category = "ContainerRegistryRepositoryEvents"
+#   }
 
-  enabled_log {
-    category = "ContainerRegistryLoginEvents"
-  }
+#   enabled_log {
+#     category = "ContainerRegistryLoginEvents"
+#   }
 
-  metric {
-    category = "AllMetrics"
-    enabled  = true
-  }
-}
+#   metric {
+#     category = "AllMetrics"
+#     enabled  = true
+#   }
+# }

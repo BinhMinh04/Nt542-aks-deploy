@@ -97,41 +97,41 @@ resource "azurerm_kubernetes_cluster" "aks" {
 }
 
 # CIS 2.1.1: Enable Diagnostic Settings for audit logging
-resource "azurerm_monitor_diagnostic_setting" "aks" {
-  name                       = "diag-${azurerm_kubernetes_cluster.aks.name}"
-  target_resource_id         = azurerm_kubernetes_cluster.aks.id
-  log_analytics_workspace_id = azurerm_log_analytics_workspace.law.id
+# resource "azurerm_monitor_diagnostic_setting" "aks" {
+#   name                       = "diag-${azurerm_kubernetes_cluster.aks.name}"
+#   target_resource_id         = azurerm_kubernetes_cluster.aks.id
+#   log_analytics_workspace_id = azurerm_log_analytics_workspace.law.id
 
-  enabled_log {
-    category = "kube-apiserver"
-  }
+#   enabled_log {
+#     category = "kube-apiserver"
+#   }
 
-  enabled_log {
-    category = "kube-audit"
-  }
+#   enabled_log {
+#     category = "kube-audit"
+#   }
 
-  enabled_log {
-    category = "kube-audit-admin"
-  }
+#   enabled_log {
+#     category = "kube-audit-admin"
+#   }
 
-  enabled_log {
-    category = "kube-controller-manager"
-  }
+#   enabled_log {
+#     category = "kube-controller-manager"
+#   }
 
-  enabled_log {
-    category = "kube-scheduler"
-  }
+#   enabled_log {
+#     category = "kube-scheduler"
+#   }
 
-  enabled_log {
-    category = "cluster-autoscaler"
-  }
+#   enabled_log {
+#     category = "cluster-autoscaler"
+#   }
 
-  enabled_log {
-    category = "guard"
-  }
+#   enabled_log {
+#     category = "guard"
+#   }
 
-  metric {
-    category = "AllMetrics"
-    enabled  = true
-  }
-}
+#   metric {
+#     category = "AllMetrics"
+#     enabled  = true
+#   }
+# }
