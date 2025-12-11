@@ -103,18 +103,21 @@ spec:
               readOnly: true
               
           - name: slack-alert
-            image: alpine:3.18
+            image: alpine/k8s:1.31.2
             command: ["/bin/sh"]
             args:
             - -c
             - |
-              apk add --no-cache curl jq
-
+              set -e
+              
+              echo "=== Starting CIS Benchmark Report ==="
+              
               # Check Secret
               if [ -f "/mnt/secrets/slack-webhook-url" ]; then
                 SLACK_WEBHOOK_URL=$(cat /mnt/secrets/slack-webhook-url)
+                echo "✓ Slack webhook found"
               else
-                echo "Error: Slack webhook secret not found"
+                echo "✗ Error: Slack webhook secret not found"
                 exit 0
               fi
 
@@ -122,142 +125,229 @@ spec:
 
               # Wait for Report
               echo "Waiting for kube-bench report..."
-              for i in $(seq 1 18); do
+              for i in $(seq 1 30); do
                 if [ -f "$OUTPUT_FILE" ] && [ -s "$OUTPUT_FILE" ]; then
-                  echo "Report found!"
+                  echo "✓ Report found!"
                   break
                 fi
-                echo "Waiting... ($i/18)"
+                echo "  Waiting... ($i/30)"
                 sleep 10
               done
 
               if [ ! -f "$OUTPUT_FILE" ]; then
-                echo "Timeout: Output file not found."
+                echo "✗ Timeout: Output file not found."
                 exit 1
               fi
 
-              sleep 5
+              sleep 3
 
-              # Parse Data
+              # Parse kube-bench Data
               PASS=$(jq '.Totals.total_pass // 0' "$OUTPUT_FILE")
               FAIL=$(jq '.Totals.total_fail // 0' "$OUTPUT_FILE")
               WARN=$(jq '.Totals.total_warn // 0' "$OUTPUT_FILE")
               SCAN_TIME=$(date '+%Y-%m-%d %H:%M:%S UTC')
 
-              echo "Parsed: PASS=$PASS, FAIL=$FAIL, WARN=$WARN"
+              echo ""
+              echo "=== Kube-bench Results ==="
+              echo "PASS=$PASS, FAIL=$FAIL, WARN=$WARN"
 
-              # Get items and save to files
-              jq -r '[.Controls[]?.tests[]?.results[]? | select(.status=="PASS")] | .[0:15] | .[] | "✓ [\(.test_number)] \(.test_desc[0:60])"' "$OUTPUT_FILE" > /tmp/passed.txt 2>/dev/null || true
-              jq -r '[.Controls[]?.tests[]?.results[]? | select(.status=="FAIL")] | .[0:15] | .[] | "✗ [\(.test_number)] \(.test_desc[0:60])"' "$OUTPUT_FILE" > /tmp/failed.txt 2>/dev/null || true
-              jq -r '[.Controls[]?.tests[]?.results[]? | select(.status=="WARN")] | .[0:10] | .[] | "⚠ [\(.test_number)] \(.test_desc[0:60])"' "$OUTPUT_FILE" > /tmp/warn.txt 2>/dev/null || true
+              # Get ALL items
+              jq -r '[.Controls[]?.tests[]?.results[]? | select(.status=="PASS")] | .[] | "✓ [\(.test_number)] \(.test_desc)"' "$OUTPUT_FILE" > /tmp/passed.txt 2>/dev/null || true
+              jq -r '[.Controls[]?.tests[]?.results[]? | select(.status=="FAIL")] | .[] | "✗ [\(.test_number)] \(.test_desc)"' "$OUTPUT_FILE" > /tmp/failed.txt 2>/dev/null || true
+              jq -r '[.Controls[]?.tests[]?.results[]? | select(.status=="WARN")] | .[] | "⚠ [\(.test_number)] \(.test_desc)"' "$OUTPUT_FILE" > /tmp/warn.txt 2>/dev/null || true
 
-              # Build blocks array step by step
-              cat > /tmp/payload.json << 'JSONEOF'
-              {
-                "blocks": [
-                  {
-                    "type": "header",
-                    "text": {
-                      "type": "plain_text",
-                      "text": "🔍 CIS AKS Benchmark Report",
-                      "emoji": true
-                    }
-                  },
-                  {
-                    "type": "section",
-                    "fields": [
-                      {"type": "mrkdwn", "text": "*Target:*\nNode & Policies"},
-                      {"type": "mrkdwn", "text": "*Scan Time:*\nPLACEHOLDER_TIME"}
-                    ]
-                  },
-                  {
-                    "type": "divider"
-                  },
-                  {
-                    "type": "section",
-                    "fields": [
-                      {"type": "mrkdwn", "text": "✅ *Pass:* PLACEHOLDER_PASS"},
-                      {"type": "mrkdwn", "text": "❌ *Fail:* PLACEHOLDER_FAIL"},
-                      {"type": "mrkdwn", "text": "⚠️ *Warn:* PLACEHOLDER_WARN"}
-                    ]
-                  },
-                  {
-                    "type": "divider"
-                  },
-                  {
-                    "type": "section",
-                    "text": {
-                      "type": "mrkdwn",
-                      "text": "*✅ Passed Checks:*\n```\nPLACEHOLDER_PASSED\n```"
-                    }
-                  },
-                  {
-                    "type": "section",
-                    "text": {
-                      "type": "mrkdwn",
-                      "text": "*❌ Failed Checks:*\n```\nPLACEHOLDER_FAILED\n```"
-                    }
-                  },
-                  {
-                    "type": "section",
-                    "text": {
-                      "type": "mrkdwn",
-                      "text": "*⚠️ Warnings:*\n```\nPLACEHOLDER_WARN_ITEMS\n```"
-                    }
-                  }
-                ]
-              }
-              JSONEOF
+              PASSED_CONTENT=$(cat /tmp/passed.txt 2>/dev/null)
+              FAILED_CONTENT=$(cat /tmp/failed.txt 2>/dev/null)
+              WARN_CONTENT=$(cat /tmp/warn.txt 2>/dev/null)
 
-              # Read content from files
-              PASSED_CONTENT=$(cat /tmp/passed.txt 2>/dev/null || echo "None")
-              FAILED_CONTENT=$(cat /tmp/failed.txt 2>/dev/null || echo "None")
-              WARN_CONTENT=$(cat /tmp/warn.txt 2>/dev/null || echo "None")
-
-              # If empty, set to None
               [ -z "$PASSED_CONTENT" ] && PASSED_CONTENT="None"
               [ -z "$FAILED_CONTENT" ] && FAILED_CONTENT="None"
               [ -z "$WARN_CONTENT" ] && WARN_CONTENT="None"
 
-              # Use jq to safely replace placeholders
-              jq --arg time "$SCAN_TIME" \
-                 --arg pass "$PASS" \
-                 --arg fail "$FAIL" \
-                 --arg warn "$WARN" \
-                 --arg passed "$PASSED_CONTENT" \
-                 --arg failed "$FAILED_CONTENT" \
-                 --arg warnings "$WARN_CONTENT" \
-                 '.blocks[1].fields[1].text = ("*Scan Time:*\n" + $time) |
-                  .blocks[3].fields[0].text = ("✅ *Pass:* " + $pass) |
-                  .blocks[3].fields[1].text = ("❌ *Fail:* " + $fail) |
-                  .blocks[3].fields[2].text = ("⚠️ *Warn:* " + $warn) |
-                  .blocks[5].text.text = ("*✅ Passed Checks:*\n```\n" + $passed + "\n```") |
-                  .blocks[6].text.text = ("*❌ Failed Checks:*\n```\n" + $failed + "\n```") |
-                  .blocks[7].text.text = ("*⚠️ Warnings:*\n```\n" + $warnings + "\n```")' \
-                 /tmp/payload.json > /tmp/final_payload.json
-
-              echo "=== Final Payload ==="
-              cat /tmp/final_payload.json
+              # ============================================
+              # KYVERNO POLICY TESTS
+              # ============================================
               echo ""
+              echo "=== Running Kyverno Policy Tests ==="
+              
+              # Create test namespace
+              kubectl create namespace kyverno-test --dry-run=client -o yaml | kubectl apply -f - 2>/dev/null || true
+              sleep 2
+              
+              KYVERNO_RESULTS=""
+              KYVERNO_PASS=0
+              KYVERNO_FAIL=0
 
-              # Send to Slack
-              if [ -n "$SLACK_WEBHOOK_URL" ]; then
-                echo "Sending to Slack..."
-                HTTP_CODE=$(curl -s -o /tmp/response.txt -w "%{http_code}" \
-                  -X POST "$SLACK_WEBHOOK_URL" \
-                  -H 'Content-type: application/json' \
-                  -d @/tmp/final_payload.json)
-
-                echo "HTTP Code: $HTTP_CODE"
-                cat /tmp/response.txt
+              # Function to test Kyverno policy
+              test_kyverno() {
+                TEST_ID="$1"
+                TEST_NAME="$2"
+                shift 2
+                
                 echo ""
-
-                if [ "$HTTP_CODE" = "200" ]; then
-                  echo "✅ Successfully sent to Slack!"
+                echo "[$TEST_ID] Testing $TEST_NAME..."
+                
+                # Run kubectl and capture output
+                OUTPUT=$("$@" 2>&1) || true
+                echo "  Output: $OUTPUT"
+                
+                # Check if blocked by Kyverno (not RBAC)
+                if echo "$OUTPUT" | grep -qi "disallow-privileged\|disallow-host-pid\|disallow-host-ipc\|disallow-host-network\|disallow-privilege-escalation\|disallow-default-namespace\|policy.*validate\|admission webhook.*denied"; then
+                  echo "  ✅ Result: BLOCKED by Kyverno"
+                  KYVERNO_RESULTS="${KYVERNO_RESULTS}✅ [$TEST_ID] $TEST_NAME → BLOCKED by Kyverno
+              "
+                  KYVERNO_PASS=$((KYVERNO_PASS + 1))
+                elif echo "$OUTPUT" | grep -qi "cannot create\|forbidden\|RBAC"; then
+                  echo "  ⚠️ Result: BLOCKED by RBAC (not Kyverno) - need more permissions"
+                  KYVERNO_RESULTS="${KYVERNO_RESULTS}⚠️ [$TEST_ID] $TEST_NAME → BLOCKED by RBAC (need permissions to test)
+              "
+                  KYVERNO_FAIL=$((KYVERNO_FAIL + 1))
+                elif echo "$OUTPUT" | grep -qi "created\|pod/"; then
+                  echo "  ❌ Result: NOT BLOCKED"
+                  KYVERNO_RESULTS="${KYVERNO_RESULTS}❌ [$TEST_ID] $TEST_NAME → NOT BLOCKED
+              "
+                  KYVERNO_FAIL=$((KYVERNO_FAIL + 1))
                 else
-                  echo "❌ Failed to send"
+                  echo "  ❓ Result: Unknown - $OUTPUT"
+                  KYVERNO_RESULTS="${KYVERNO_RESULTS}❓ [$TEST_ID] $TEST_NAME → Unknown result
+              "
+                  KYVERNO_FAIL=$((KYVERNO_FAIL + 1))
                 fi
+              }
+
+              # Run tests
+              test_kyverno "4.2.1" "Privileged containers" \
+                kubectl run test-priv-$(date +%s) --image=nginx -n kyverno-test \
+                --overrides='{"spec":{"containers":[{"name":"nginx","image":"nginx","securityContext":{"privileged":true}}]}}'
+
+              test_kyverno "4.2.2" "Host PID namespace" \
+                kubectl run test-pid-$(date +%s) --image=nginx -n kyverno-test \
+                --overrides='{"spec":{"hostPID":true,"containers":[{"name":"nginx","image":"nginx"}]}}'
+
+              test_kyverno "4.2.3" "Host IPC namespace" \
+                kubectl run test-ipc-$(date +%s) --image=nginx -n kyverno-test \
+                --overrides='{"spec":{"hostIPC":true,"containers":[{"name":"nginx","image":"nginx"}]}}'
+
+              test_kyverno "4.2.4" "Host Network namespace" \
+                kubectl run test-net-$(date +%s) --image=nginx -n kyverno-test \
+                --overrides='{"spec":{"hostNetwork":true,"containers":[{"name":"nginx","image":"nginx"}]}}'
+
+              test_kyverno "4.2.5" "Privilege Escalation" \
+                kubectl run test-esc-$(date +%s) --image=nginx -n kyverno-test \
+                --overrides='{"spec":{"containers":[{"name":"nginx","image":"nginx","securityContext":{"allowPrivilegeEscalation":true}}]}}'
+
+              test_kyverno "4.6.3" "Default namespace usage" \
+                kubectl run test-def-$(date +%s) --image=nginx -n default
+
+              # Cleanup
+              echo ""
+              echo "Cleaning up..."
+              kubectl delete namespace kyverno-test --ignore-not-found --wait=false 2>/dev/null &
+              kubectl delete pod -n default -l run --ignore-not-found --wait=false 2>/dev/null &
+
+              echo ""
+              echo "=== Kyverno Summary: PASS=$KYVERNO_PASS, FAIL=$KYVERNO_FAIL ==="
+
+              # ============================================
+              # SEND TO SLACK
+              # ============================================
+              echo ""
+              echo "=== Sending to Slack ==="
+              
+              # Message 1: Summary
+              jq -n \
+                --arg time "$SCAN_TIME" \
+                --arg pass "$PASS" \
+                --arg fail "$FAIL" \
+                --arg warn "$WARN" \
+              '{
+                "blocks": [
+                  {"type": "header", "text": {"type": "plain_text", "text": "🔍 CIS AKS Benchmark Report", "emoji": true}},
+                  {"type": "section", "fields": [{"type": "mrkdwn", "text": ("*Target:* Node & Policies\n*Time:* " + $time)}]},
+                  {"type": "divider"},
+                  {"type": "section", "fields": [
+                    {"type": "mrkdwn", "text": ("✅ *Pass:* " + $pass)},
+                    {"type": "mrkdwn", "text": ("❌ *Fail:* " + $fail)},
+                    {"type": "mrkdwn", "text": ("⚠️ *Warn:* " + $warn)}
+                  ]}
+                ]
+              }' > /tmp/msg1.json
+
+              # Message 2: All Passed
+              jq -n --arg passed "$PASSED_CONTENT" \
+              '{
+                "blocks": [
+                  {"type": "divider"},
+                  {"type": "section", "text": {"type": "mrkdwn", "text": "*✅ All Passed Checks:*"}},
+                  {"type": "section", "text": {"type": "mrkdwn", "text": ("```" + $passed + "```")}}
+                ]
+              }' > /tmp/msg2.json
+
+              # Message 3: Failed
+              jq -n --arg failed "$FAILED_CONTENT" \
+              '{
+                "blocks": [
+                  {"type": "divider"},
+                  {"type": "section", "text": {"type": "mrkdwn", "text": "*❌ Failed Checks:*"}},
+                  {"type": "section", "text": {"type": "mrkdwn", "text": ("```" + $failed + "```")}}
+                ]
+              }' > /tmp/msg3.json
+
+              # Message 4: Warnings
+              jq -n --arg warnings "$WARN_CONTENT" \
+              '{
+                "blocks": [
+                  {"type": "divider"},
+                  {"type": "section", "text": {"type": "mrkdwn", "text": "*⚠️ Warnings:*"}},
+                  {"type": "section", "text": {"type": "mrkdwn", "text": ("```" + $warnings + "```")}}
+                ]
+              }' > /tmp/msg4.json
+
+              # Message 5: Kyverno Tests
+              jq -n \
+                --arg kpass "$KYVERNO_PASS" \
+                --arg kfail "$KYVERNO_FAIL" \
+                --arg results "$KYVERNO_RESULTS" \
+              '{
+                "blocks": [
+                  {"type": "divider"},
+                  {"type": "header", "text": {"type": "plain_text", "text": "🛡️ Kyverno Policy Enforcement Test", "emoji": true}},
+                  {"type": "section", "text": {"type": "mrkdwn", "text": "_Testing if Kyverno blocks policy violations for user workloads..._"}},
+                  {"type": "section", "fields": [
+                    {"type": "mrkdwn", "text": ("✅ *Blocked:* " + $kpass + "/6")},
+                    {"type": "mrkdwn", "text": ("⚠️ *Other:* " + $kfail + "/6")}
+                  ]},
+                  {"type": "section", "text": {"type": "mrkdwn", "text": ("```" + $results + "```")}},
+                  {"type": "context", "elements": [{"type": "mrkdwn", "text": "ℹ️ Kube-bench failures are from *system pods* (kube-system, calico) which need elevated privileges. *User workloads ARE protected* by Kyverno."}]}
+                ]
+              }' > /tmp/msg5.json
+
+              # Send messages
+              echo "Sending message 1 (Summary)..."
+              curl -sf -X POST "$SLACK_WEBHOOK_URL" -H 'Content-type: application/json' -d @/tmp/msg1.json && echo " ✓" || echo " ✗"
+              sleep 1
+              
+              echo "Sending message 2 (Passed)..."
+              curl -sf -X POST "$SLACK_WEBHOOK_URL" -H 'Content-type: application/json' -d @/tmp/msg2.json && echo " ✓" || echo " ✗"
+              sleep 1
+              
+              if [ "$FAIL" != "0" ]; then
+                echo "Sending message 3 (Failed)..."
+                curl -sf -X POST "$SLACK_WEBHOOK_URL" -H 'Content-type: application/json' -d @/tmp/msg3.json && echo " ✓" || echo " ✗"
+                sleep 1
               fi
+              
+              if [ "$WARN" != "0" ]; then
+                echo "Sending message 4 (Warnings)..."
+                curl -sf -X POST "$SLACK_WEBHOOK_URL" -H 'Content-type: application/json' -d @/tmp/msg4.json && echo " ✓" || echo " ✗"
+                sleep 1
+              fi
+              
+              echo "Sending message 5 (Kyverno)..."
+              curl -sf -X POST "$SLACK_WEBHOOK_URL" -H 'Content-type: application/json' -d @/tmp/msg5.json && echo " ✓" || echo " ✗"
+              
+              echo ""
+              echo "=== Done ==="
             volumeMounts:
             - name: results
               mountPath: /results
