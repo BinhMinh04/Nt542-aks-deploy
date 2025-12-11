@@ -135,8 +135,3 @@ resource "azurerm_monitor_diagnostic_setting" "aks" {
     enabled  = true
   }
 }
-
-import {
-  to = azurerm_monitor_diagnostic_setting.aks
-  id = "/subscriptions/b8c602f1-c47f-45f3-bfc3-3ac4c0072bbf/resourceGroups/rg-nt542-g13-sea/providers/Microsoft.ContainerService/managedClusters/aks-nt542-g13-sea|diag-aks-nt542-g13-sea"
-}
