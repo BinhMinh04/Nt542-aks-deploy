@@ -23,7 +23,7 @@ metadata:
   name: kube-bench-role
 rules:
   - apiGroups: [""]
-    resources: ["nodes", "pods", "serviceaccounts", "services", "configmaps", "secrets"]
+    resources: ["nodes", "services", "configmaps", "secrets"]
     verbs: ["get", "list", "watch"]
   
   - apiGroups: ["rbac.authorization.k8s.io"]
@@ -38,6 +38,17 @@ rules:
     resources: ["podsecuritypolicies"]
     verbs: ["get", "list", "watch"]
 
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["get", "list", "watch", "create", "delete"]
+  
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch", "create", "delete"]
+  
+  - apiGroups: [""]
+    resources: ["serviceaccounts"]
+    verbs: ["get", "list", "watch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
