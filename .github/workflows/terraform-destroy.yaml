@@ -1,0 +1,77 @@
+name: Terraform Destroy Infrastructure
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: 'Type "destroy" to confirm infrastructure deletion'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  Destroy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: terraform/core
+
+    steps:
+      - name: Validate Confirmation
+        run: |
+          if [ "${{ github.event.inputs.confirmation }}" != "destroy" ]; then
+            echo "❌ Confirmation failed. You must type 'destroy' to proceed."
+            exit 1
+          fi
+          echo "✅ Confirmation validated"
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: |
+          terraform init \
+            -backend-config="resource_group_name=rg-nt542-g13-sea" \
+            -backend-config="storage_account_name=nt542statestorage" \
+            -backend-config="container_name=terraformstate" \
+            -backend-config="key=terraform.tfstate"
+
+      - name: Remove Resource Group from State
+        run: |
+          echo "🔒 Removing resource group from Terraform state to preserve storage account..."
+          terraform state rm azurerm_resource_group.main || true
+          echo "✅ Resource group will be preserved (including storage account)"
+
+      - name: Terraform Destroy
+        run: |
+          echo "🗑️ Destroying all resources except resource group..."
+          terraform destroy \
+            -var-file="dev.tfvars" \
+            -var="slack_webhook_url=${{ secrets.SLACK_WEBHOOK_URL }}" \
+            -auto-approve
+          echo "✅ Infrastructure destroyed successfully"
+
+      - name: Summary
+        if: success()
+        run: |
+          echo "## 🎯 Destroy Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Infrastructure destroyed" >> $GITHUB_STEP_SUMMARY
+          echo "🔒 Resource group preserved: rg-nt542-g13-sea" >> $GITHUB_STEP_SUMMARY
+          echo "🔒 Storage account preserved: nt542statestorage" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Executed by: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "Timestamp: $(date -u)" >> $GITHUB_STEP_SUMMARY
