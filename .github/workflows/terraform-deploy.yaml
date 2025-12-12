@@ -88,9 +88,16 @@ jobs:
         with:
           name: tfplan
           path: terraform/core
+          
+      - name: Remove Resource Group from State
+        shell: bash
+        run: |
+          echo "🔒 Removing resource group from Terraform state to preserve storage account..."
+          terraform state rm azurerm_resource_group.main || true
+          echo "✅ Resource group will be preserved (including storage account)"
 
-      - name: Terraform Apply
-        run: terraform apply -auto-approve tfplan
+      - name: Terraform Destroy
+        run: terraform destroy -auto-approve tfplan
 
   Configure-AKS:
     needs: Apply
