@@ -88,7 +88,7 @@ jobs:
         with:
           name: tfplan
           path: terraform/core
-          
+
       - name: Remove Resource Group from State
         shell: bash
         run: |
@@ -97,7 +97,7 @@ jobs:
           echo "✅ Resource group will be preserved (including storage account)"
 
       - name: Terraform Destroy
-        run: terraform destroy -auto-approve tfplan
+        run: terraform destroy -auto-approve
 
   Configure-AKS:
     needs: Apply
