@@ -21,8 +21,9 @@ jobs:
 
     steps:
       - name: Validate Confirmation
+        shell: bash
         run: |
-          if [ "${{ github.event.inputs.confirmation }}" != "destroy" ]; then
+          if [[ "${{ github.event.inputs.confirmation }}" != "destroy" ]]; then
             echo "❌ Confirmation failed. You must type 'destroy' to proceed."
             exit 1
           fi
@@ -50,12 +51,13 @@ jobs:
             -backend-config="key=terraform.tfstate"
 
       - name: Remove Resource Group from State
+        shell: bash
         run: |
           echo "🔒 Removing resource group from Terraform state to preserve storage account..."
           terraform state rm azurerm_resource_group.main || true
           echo "✅ Resource group will be preserved (including storage account)"
-
       - name: Terraform Destroy
+        shell: bash
         run: |
           echo "🗑️ Destroying all resources except resource group..."
           terraform destroy \
@@ -63,9 +65,10 @@ jobs:
             -var="slack_webhook_url=${{ secrets.SLACK_WEBHOOK_URL }}" \
             -auto-approve
           echo "✅ Infrastructure destroyed successfully"
-
+          echo "✅ Infrastructure destroyed successfully"
       - name: Summary
         if: success()
+        shell: bash
         run: |
           echo "## 🎯 Destroy Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -74,4 +77,5 @@ jobs:
           echo "🔒 Storage account preserved: nt542statestorage" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Executed by: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "Timestamp: $(date -u)" >> $GITHUB_STEP_SUMMARYTEP_SUMMARY
           echo "Timestamp: $(date -u)" >> $GITHUB_STEP_SUMMARY
